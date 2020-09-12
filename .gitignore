@@ -4,3 +4,5 @@ build/
 *.py[cod]
 *.egg-info
 *.egg
+
+.vscode/
