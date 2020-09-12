@@ -43,7 +43,7 @@ class OAuth2Session:
   login: Optional[str]
 
   @property
-  def authorize_url(self) -> str:
+  def login_url(self) -> str:
     params = {
       'client_id': self.client.client_id,
       'state': self.state,

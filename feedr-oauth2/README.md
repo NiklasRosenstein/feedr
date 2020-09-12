@@ -16,9 +16,9 @@ client = OAuth2Client(
 
 session = client.login_session()
 
-# This stands for any intermediary logic needed to redirect the user to the authorize URL
+# This stands for any intermediary logic needed to redirect the user to the login URL
 # and retrieving the "code" and "state" from page they got redirected to after that.
-response = redirect_user_to_page(session.authorize_url)
+response = redirect_user_to_page(session.login_url)
 
 session.validate(response.get('state'))
 
