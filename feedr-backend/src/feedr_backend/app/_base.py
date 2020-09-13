@@ -72,6 +72,6 @@ def json_response(func):
 
   @functools.wraps(func)
   def wrapper(*args, **kwargs):
-    return to_str(func(*args, **kwargs), return_type)
+    return (to_str(func(*args, **kwargs), return_type), 200, [('Content-Type', 'application/json')])
 
   return wrapper
