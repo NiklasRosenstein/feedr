@@ -60,7 +60,7 @@ class AuthComponent(Component):
   @route('/collector/<collector_id>/authorized')
   def collect(self, collector_id: str):
     session = self._find_pending_login(request.args['state'])
-    access_data = session.exchange(request.args['code'])
+    access_data = session.get_token(request.args['code'])
     collector = self.collectors[collector_id]
     user = collector.finalize_login(access_data)
     return f'Hello {user.user_name}'
