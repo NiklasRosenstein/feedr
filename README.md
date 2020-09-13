@@ -23,10 +23,7 @@ the topics you are interested in and exchange articles and views with other user
     * [ ] Follow other users and confirm followship
     * [ ] Share individual articles / whole RSS feeds with another user
 * Frontend
-  * Todo
-
-
-## Wireframes
-
-* Homepage: https://wireframe.cc/uKTozU
-* Add RSS Feed: https://wireframe.cc/z52yR3
+  * Wireframes
+    * Homepage: https://wireframe.cc/uKTozU
+    * Add RSS Feed: https://wireframe.cc/z52yR3
+  
