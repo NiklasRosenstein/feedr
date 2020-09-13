@@ -4,6 +4,7 @@ from typing import Dict
 
 from ._base import register_component
 from .auth import AuthComponent
+from .user import UserComponent
 from ..config import Config
 from ..model import session, begin_session, end_session
 
@@ -29,3 +30,4 @@ def init_app(config: Config) -> None:
     end_session()
 
   register_component(AuthComponent(authenticators), app, '/api/auth')
+  register_component(UserComponent(), app, '/api/user')

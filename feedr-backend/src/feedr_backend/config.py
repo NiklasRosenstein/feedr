@@ -7,6 +7,7 @@ from databind.yaml import from_str
 
 from .auth import AuthConfig, AuthPlugin
 from .auth.github import GithubAuthConfig
+from .auth.nextcloud import NextcloudAuthConfig
 
 
 @datamodel
@@ -17,6 +18,7 @@ class DatabaseConfig:
 @uniontype
 class Authenticator(AuthConfig):
   github: GithubAuthConfig
+  nextcloud: NextcloudAuthConfig
 
 
 @datamodel
