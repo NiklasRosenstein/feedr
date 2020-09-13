@@ -34,9 +34,9 @@ def register_component(
 
   fqn = f'{type(component).__module__}.{type(component).__name__}'
 
-  for member_name in dir(component):
-    value = getattr(component, member_name)
-    if not isinstance(value, (types.MethodType, types.FunctionType)):
+  for member_name in dir(type(component)):
+    value = getattr(type(component), member_name)
+    if not isinstance(value, types.FunctionType):
       continue
     if not hasattr(value, '__route__'):
       continue
@@ -45,7 +45,14 @@ def register_component(
       rule = prefix + rule
     if 'endpoint' not in options:
       options['endpoint'] = f'{fqn}.{member_name}'
-    app.add_url_rule(rule, view_func=value,**options)
+    app.add_url_rule(rule, view_func=functools.partial(value, component),**options)
+
+  if component.before_request != Component.before_request:
+    app.before_request(component.before_request)
+  if component.after_request != Component.after_request:
+    app.after_request(component.after_request)
+  if component.teardown_request != Component.teardown_request:
+    app.teardown_request(component.teardown_request)
 
 
 def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
@@ -59,7 +66,15 @@ def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
 
 
 class Component:
-  pass
+
+  def before_request(self) -> Optional[flask.Request]:
+    return None
+
+  def after_request(self, response: flask.Response) -> flask.Response:
+    return response
+
+  def teardown_request(self, error: Optional[Exception]) -> None:
+    pass
 
 
 def json_response(func):

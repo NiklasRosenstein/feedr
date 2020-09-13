@@ -9,6 +9,7 @@ from flask import Response, redirect, request
 
 from feedr_oauth2 import OAuth2Session
 from ._base import Component, route
+from .session import SessionManager
 from ..auth import AuthPlugin
 
 
@@ -22,10 +23,14 @@ class AuthComponent(Component):
 
   def __init__(self,
     collectors: Dict[str, AuthPlugin],
+    redirect_uri: str,
+    session_manager: SessionManager,
     max_login_state_age: int = 60,
   ) -> None:
     self.collectors = collectors
+    self.redirect_uri = redirect_uri
     self.max_login_state_age = max_login_state_age
+    self._session_manager = session_manager
     self._pending_logins: List[PendingLogin] = []
     self.lock = threading.Lock()
 
@@ -63,4 +68,5 @@ class AuthComponent(Component):
     access_data = session.get_token(request.args['code'])
     collector = self.collectors[collector_id]
     user = collector.finalize_login(access_data)
-    return f'Hello {user.user_name}'
+    self._session_manager.login(user)
+    return redirect(self.redirect_uri)
