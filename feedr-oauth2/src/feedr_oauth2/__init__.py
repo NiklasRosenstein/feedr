@@ -32,8 +32,10 @@ class OAuth2Client:
   def login_session(self,
     state: Optional[str] = None,
     login: Optional[str] = None,
+    response_type: str = 'code',
+    grant_type: str = 'authorization_code',
   ) -> 'OAuth2Session':
-    return OAuth2Session(self, state or self.state_factory(), login)
+    return OAuth2Session(self, state or self.state_factory(), login, response_type, grant_type)
 
 
 @datamodel
@@ -41,12 +43,15 @@ class OAuth2Session:
   client: OAuth2Client
   state: str
   login: Optional[str]
+  response_type: str
+  grant_type: str
 
   @property
   def login_url(self) -> str:
     params = {
       'client_id': self.client.client_id,
       'state': self.state,
+      'response_type': self.response_type,
     }
     if self.login:
       params['login'] = self.login
@@ -59,18 +64,27 @@ class OAuth2Session:
     if self.state != state:
       raise TamperedFlowException(f'OAuth2 state mismatch ({self.state!r} != {state!r})')
 
-  def exchange_url(self, code: str) -> str:
+  def token_url(self, code: str) -> str:
     params = {
       'client_id': self.client.client_id,
       'client_secret': self.client.client_secret,
       'code': code,
       'state': self.state,
+      'grant_type': self.grant_type,
     }
     if self.client.redirect_uri:
       params['redirect_uri'] = self.client.redirect_uri
     return self.client.exchange_url + '?' + urlencode(params)
 
-  def exchange(self, code: str) -> Dict[str, str]:
-    response = requests.post(self.exchange_url(code))
+  def get_token(self, code: str) -> Dict[str, str]:
+    assert self.grant_type == 'authorization_code'
+    response = requests.post(self.token_url(code))
     response.raise_for_status()
-    return dict(parse_qsl(response.text))
+    content_type = response.headers.get('Content-Type', '').partition(';')[0]
+    if content_type == 'application/json':
+      return response.json()
+    elif content_type == 'application/x-www-form-urlencoded':
+      return dict(parse_qsl(response.text))
+    else:
+      raise RuntimeError(f'unknown Content-Type: {content_type!r}')
+

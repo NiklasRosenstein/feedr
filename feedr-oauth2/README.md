@@ -1,6 +1,7 @@
 # feedr-oauth2
 
-This small library implements the OAuth2 login flow.
+This small library implements the OAuth2 login flow for `code` response types and
+`authorization_code` grant types.
 
 ## Quickstart
 
@@ -14,15 +15,14 @@ client = OAuth2Client(
   client_secret='...',
 )
 
+# Defaults to response_type=code and grant_type=authorization_code.
 session = client.login_session()
 
 # This stands for any intermediary logic needed to redirect the user to the login URL
 # and retrieving the "code" and "state" from page they got redirected to after that.
 response = redirect_user_to_page(session.login_url)
 
-session.validate(response.get('state'))
-
-auth_data = session.exchange(response.get('code'))
+auth_data = session.get_token(response.get('code'))
 print(auth_data['access_token'])
 ```
 
