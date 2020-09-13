@@ -8,6 +8,7 @@ from sqlalchemy.orm import relationship
 
 from ._base import Entity, instance_getter
 from ._session import session
+from .file import File
 
 
 class User(Entity):
@@ -22,13 +23,17 @@ class User(Entity):
   #: The URL to the user's Avatar URL (if available from an external service).
   avatar_url = Column(String, nullable=True)
 
+  #: A reference to a file that stores the user's avatar. This is only used in cases
+  #: where there is no #avatar_url and the image is stored directlry.
+  avatar_file_id = Column(Integer, ForeignKey(File.id))
+
   #: The ID of the collector where the user originates from.
   collector_id = Column(String)
 
   #: The foreign ID of the user in the collector's system.
   collector_key = Column(String)
 
-  avatar = relationship('Avatar', back_populates='user', uselist=False)
+  avatar_file = relationship(File, backref=None, uselist=False)
   tokens = relationship('Token', back_populates='user')
   get = instance_getter['User']()
 
@@ -41,25 +46,14 @@ class User(Entity):
       raise ValueError(f'expected image content type, got {content_type!r}')
 
     self.avatar_url = None
-    (Avatar
-      .get(user_id=self.id)
-      .create_or_update(data=raw_data, content_type=content_type))
+    with File.create(mimetype=content_type) as (fp, file_):
+      fp.write(raw_data)
+      self.avatar_file = file_
 
   def create_token(self, expiration_date: datetime.datetime) -> 'Token':
     token = Token(user=self, value=str(uuid.uuid4()), expiration_date=expiration_date)
     session.add(token)
     return token
-
-
-class Avatar(Entity):
-  __tablename__ = __name__ + '.Avatar'
-
-  user_id = Column(Integer, ForeignKey(User.id), primary_key=True)
-  user = relationship(User, back_populates='avatar', uselist=False)
-  data = Column(Binary, nullable=False)
-  content_type = Column(String, nullable=False)
-
-  get = instance_getter['Avatar']()
 
 
 class Token(Entity):

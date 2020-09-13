@@ -45,6 +45,7 @@ class NextcloudAuthPlugin(AuthPlugin):
       .or_create(user_name=user_id))
 
     # Fetch the user's avatar.
+    # TODO: Download avatar async.
     auth_header = f'{access_data["token_type"]} {access_data["access_token"]}'
     avatar_url = f'{self._base_url}/avatar/{user_id}/145'
     avatar_response = requests.get(avatar_url, headers={'Authorization': auth_header})

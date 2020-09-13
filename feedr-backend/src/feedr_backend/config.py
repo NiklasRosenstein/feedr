@@ -37,6 +37,7 @@ class Config:
   auth: Auth
   database: DatabaseConfig
   secret_key: str
+  media_directory: str
 
   @classmethod
   def load(cls, file_: Union[str, Path]) -> 'Config':

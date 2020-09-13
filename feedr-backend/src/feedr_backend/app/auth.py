@@ -11,6 +11,7 @@ from feedr_oauth2 import OAuth2Session
 from ._base import Component, route
 from .session import SessionManager
 from ..auth import AuthPlugin
+from .. import model
 
 
 @datamodel
@@ -31,6 +32,8 @@ class AuthComponent(Component):
     self.redirect_uri = redirect_uri
     self.max_login_state_age = max_login_state_age
     self._session_manager = session_manager
+    # NOTE: To run the server with multiple processes or across nodes, this list must be
+    #   stored in the database instead of the server process memory.
     self._pending_logins: List[PendingLogin] = []
     self.lock = threading.Lock()
 
@@ -68,5 +71,6 @@ class AuthComponent(Component):
     access_data = session.get_token(request.args['code'])
     collector = self.collectors[collector_id]
     user = collector.finalize_login(access_data)
+    model.session.commit()
     self._session_manager.login(user)
     return redirect(self.redirect_uri)

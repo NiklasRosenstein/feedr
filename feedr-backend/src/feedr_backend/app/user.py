@@ -36,7 +36,7 @@ class UserComponent(Component):
     if not self._session_manager.current_user:
       abort(403)
     user = User.get(id=user_id).instance
-    if user.avatar:
+    if user.avatar_file:
       avatar_url = url_for(self.get_avatar, user_id=user_id)
     else:
       avatar_url = user.avatar_url
@@ -45,9 +45,11 @@ class UserComponent(Component):
   @route('/<int:user_id>/avatar')
   def get_avatar(self, user_id: int):
     user = User.get(id=user_id).instance
-    if user.avatar:
-      return send_file(
-        io.BytesIO(user.avatar.data),
-        mimetype=user.avatar.content_type,
-        attachment_filename='avatar.png')  # TODO: Use correct filename
+    if user.avatar_file:
+      with user.avatar_file.open() as fp:
+        filename = 'avatar'  # TODO: Suffix?
+        return send_file(
+          user.avatar_file.open(),
+          mimetype=user.avatar_file.mimetype,
+          attachment_filename=filename)
     abort(404)
