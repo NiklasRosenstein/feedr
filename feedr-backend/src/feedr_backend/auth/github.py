@@ -43,8 +43,8 @@ class GithubAuthPlugin(AuthPlugin):
     user_info = requests.get(
       self._user_api_url,
       headers={'Authorization': 'token ' + access_data['access_token']}).json()
-    return User.get(
-      on=dict(collector_id=self._collector_id, collector_key=str(user_info['id'])),
-      or_create=dict(user_name=user_info['login']),
-      and_update=dict(avatar_url=user_info['avatar_url']),
-    )
+    user = (User
+      .get(collector_id=self._collector_id, collector_key=str(user_info['id']))
+      .or_create(user_name=user_info['login']))
+    user.avatar_url = user_info['avatar_url']
+    return user

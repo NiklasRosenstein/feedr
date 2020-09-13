@@ -40,18 +40,15 @@ class NextcloudAuthPlugin(AuthPlugin):
 
   def finalize_login(self, access_data: Dict[str, str]) -> User:
     user_id = access_data['user_id']
-
-    user = User.get(
-      on=dict(collector_id=self._collector_id, collector_key=str(user_id)),
-      or_create=dict(user_name=user_id),
-      and_update=dict(avatar_url=None),
-    )
+    user = (User
+      .get(collector_id=self._collector_id, collector_key=user_id)
+      .or_create(user_name=user_id))
 
     # Fetch the user's avatar.
     auth_header = f'{access_data["token_type"]} {access_data["access_token"]}'
     avatar_url = f'{self._base_url}/avatar/{user_id}/145'
     avatar_response = requests.get(avatar_url, headers={'Authorization': auth_header})
     if avatar_response.status_code // 100 == 2:
-      user.save_avatar(avatar_response.content, avatar_response.headers.get('Content-Type'))
+      user.save_avatar(avatar_response.content, avatar_response.headers['Content-Type'])
 
     return user

@@ -10,76 +10,87 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import and_
 
 Entity = declarative_base()
+T = TypeVar('T')
 T_Entity = TypeVar('T_Entity', bound=Entity)
 
 
-if TYPE_CHECKING:
-  class _BoundEntityRetrieval(Protocol):
-    def __call__(self,
-      on: Dict[str, Any],
-      then_update: Optional[Dict[str, Any]] = None,
-      or_create: Optional[Dict[str, Any]] = None,
-      and_update: Optional[Dict[str, Any]] = None,
-    ):
-      ...
-
-
-def _unbound_entity_retrieval(
-  session: Session,
-  entity_cls: Type[T_Entity],
-  on: Dict[str, Any],
-  then_update: Optional[Dict[str, Any]] = None,
-  or_create: Optional[Dict[str, Any]] = None,
-  or_none: bool = False,
-  and_update: Optional[Dict[str, Any]] = None,
-) -> T_Entity:
-
-  filters = and_(*(getattr(entity_cls, k) == v for k, v in on.items()))
-  query = session.query(entity_cls).filter(filters)
-
-  try:
-    instance = query.one()
-  except NoResultFound:
-    if or_create is not None:
-      instance = entity_cls(**on, **or_create)  # type: ignore
-      session.add(instance)
-    else:
-      raise
-  else:
-    if then_update is not None:
-      for key, value in then_update.items():
-        setattr(instance, key, value)
-      session.add(instance)
-
-  if instance is not None:
-    if and_update is not None:
-      for key, value in and_update.items():
-        setattr(instance, key, value)
-      session.add(instance)
-
-  return instance
-
-
-class entity_retrieval_descriptor(Generic[T_Entity]):
+class _RetrievalHelper(Generic[T_Entity]):
   """
-  A descriptor that can be declared on the class-level of an entity to bind the
-  #entity_retrieval() method to the entity.
+  A helper class that allows you to write SqlAlchemy queries for retrieving, creating and/or
+  updating a row using a builder pattern.
+  """
 
+  def __init__(self, session: Session, entity_cls: T_Entity, on: Any) -> None:
+    self._session = session
+    self._entity_cls = entity_cls
+    self._on = on
+
+  def _get(self) -> T_Entity:
+    filters = and_(*(getattr(self._entity_cls, k) == v for k, v in self._on.items()))
+    query = self._session.query(self._entity_cls).filter(filters)
+    return query.one()
+
+  @property
+  def instance(self) -> T_Entity:
+    return self._get()
+
+  def or_create(self, **values: Any) -> T_Entity:
+    try:
+      return self._get()
+    except NoResultFound:
+      instance = self._entity_cls(**self._on, **values)  # type: ignore
+      self._session.add(instance)
+      return instance
+
+  def or_none(self) -> Optional[T_Entity]:
+    try:
+      return self._get()
+    except NoResultFound:
+      return None
+
+  def then_update(self, **values: Any) -> T_Entity:
+    instance = self._get()
+    for key, value in values.items():
+      setattr(instance, key, value)
+    self._session.add(instance)
+    return instance
+
+  def create_or_update(self, **values: Any) -> T_Entity:
+    try:
+      instance = self._get()
+    except NoResultFound:
+      instance = self._entity_cls(**self._on, **values)  # type: ignore
+    else:
+      for key, value in values.items():
+        setattr(instance, key, value)
+    self._session.add(instance)
+    return instance
+
+
+class instance_getter(Generic[T_Entity]):
+  """
   Example:
 
   ```py
   class User(Entity):
     id = Column(Integer)
     name = Column(String)
-    get = entity_retrieval_descriptor['User']()
+    get = instance_getter['User']()
 
-  user = User.get(on={'id': 42}, or_create={'name': 'Mr. Universal'})
+  user = User.get(id=42).or_create(name='Mr. Universal')
   """
+
+  if TYPE_CHECKING:
+    class _GetProto(Protocol[T]):
+      def __call__(self, **on: Any) -> _RetrievalHelper[T]:
+        ...
 
   def __get__(self,
     obj: Optional[T_Entity],
     type_: Optional[Type[T_Entity]] = None,
-  ) -> '_BoundEntityRetrieval':
+  ) -> '_GetProto[T_Entity]':
     from ._session import session
     assert type_ is not None
-    return partial(_unbound_entity_retrieval, session, type_)
+    def getter(**on):
+      return _RetrievalHelper[T_Entity](session, type_, on)
+    return getter

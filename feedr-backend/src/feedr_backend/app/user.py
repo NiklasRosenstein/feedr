@@ -12,7 +12,7 @@ class UserComponent:
 
   @route('/<int:user_id>/avatar')
   def get_avatar(self, user_id: int):
-    user = User.get(on={'id': user_id})
+    user = User.get(id=user_id).instance
     if user.avatar_url:
       # TODO: This may be against TOS of the respective provider. Need to send the
       #   avatar URL instead of proxying the content.

@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Binary, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from ._base import Entity, entity_retrieval_descriptor
+from ._base import Entity, instance_getter
 
 
 class User(Entity):
@@ -25,7 +25,7 @@ class User(Entity):
   #: The foreign ID of the user in the collector's system.
   collector_key = Column(String)
 
-  get = entity_retrieval_descriptor['User']()
+  get = instance_getter['User']()
 
   def save_avatar(self, raw_data: bytes, content_type: str) -> None:
     """
@@ -36,10 +36,10 @@ class User(Entity):
       raise ValueError(f'expected image content type, got {content_type!r}')
 
     self.avatar_url = None
-    avatar = Avatar.get(
-      on={'user_id': self.id},
-      or_create={},
-      and_update={'data': raw_data, 'content_type': content_type})
+    a = (Avatar
+      .get(user_id=self.id)
+      .create_or_update(data=raw_data, content_type=content_type))
+    print('-->', a)
 
 
 class Avatar(Entity):
@@ -50,4 +50,4 @@ class Avatar(Entity):
   data = Column(Binary, nullable=False)
   content_type = Column(String, nullable=False)
 
-  get = entity_retrieval_descriptor['Avatar']()
+  get = instance_getter['Avatar']()
