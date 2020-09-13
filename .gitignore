@@ -6,3 +6,6 @@ build/
 *.egg
 
 .vscode/
+
+config.yml
+db.sqlite
