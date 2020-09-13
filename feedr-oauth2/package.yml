@@ -5,3 +5,4 @@ description: Package description here.
 requirements:
 - python ^3.5
 - requests ^2.24.0
+typed: true
