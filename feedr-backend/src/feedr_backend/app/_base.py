@@ -1,8 +1,10 @@
 
+import functools
 import types
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, cast
 
 import flask
+from databind.json import to_str
 
 FlaskTarget = Union[flask.Flask, flask.Blueprint]
 
@@ -46,5 +48,30 @@ def register_component(
     app.add_url_rule(rule, view_func=value,**options)
 
 
+def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
+  """
+  Similar to #flask.url_for(), but accepts an instance method.
+  """
+
+  if not isinstance(endpoint, str):
+    endpoint = cast(str, endpoint.__route__[1]['endpoint'])  # type: ignore
+  return flask.url_for(endpoint, **kwargs)
+
+
 class Component:
   pass
+
+
+def json_response(func):
+  """
+  Decorator for a function that returns an object that is serializing with #databind.json.
+  The return type must be annotated in the function.
+  """
+
+  return_type = func.__annotations__['return']
+
+  @functools.wraps(func)
+  def wrapper(*args, **kwargs):
+    return to_str(func(*args, **kwargs), return_type)
+
+  return wrapper
