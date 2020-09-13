@@ -8,7 +8,7 @@ from ._base import Component, route
 from ..model.user import User
 
 
-class UserComponent:
+class UserComponent(Component):
 
   @route('/<int:user_id>/avatar')
   def get_avatar(self, user_id: int):
