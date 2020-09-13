@@ -1,6 +1,8 @@
 # feedr
 
-Feedr is an open source platform to manage RSS feeds and share articles with other users.
+Feedr is an open source news platform based on RSS feeds without recommendation algorithms or
+targeted advertising. Instead, Feedr gives you the tools to proactively find news on the topics
+you are interested in and exchange articles and views with other users.
 
 ## Wireframes
 

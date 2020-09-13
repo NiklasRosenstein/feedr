@@ -4,9 +4,9 @@ The backend for Feedr provides the REST APIs to allow users to manage their RSS 
 
 Key components:
 
-* User authentication (via E-Mail or GitHub)
-* RSS stream management
-* Reading activity tracking
+* [x] OAuth2 User authentication
+* [ ] RSS stream management
+* [ ] Reading activity tracking
 
 ---
 
