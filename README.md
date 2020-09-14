@@ -8,6 +8,10 @@ the topics you are interested in and exchange articles and views with other user
 ## Current state / Roadmap
 
 * Backend
+  * Infrastructure
+    * [x] Pluggable ORM
+    * [x] Pluggable Web Views
+    * [x] Background task
   * User authentication
     * [x] Social login via Nextcloud
     * [x] Social login via GitHub
