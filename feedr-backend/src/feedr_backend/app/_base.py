@@ -23,16 +23,18 @@ def route(rule: str, **options) -> Callable[[Callable], Callable]:
   return decorator
 
 
+def _get_component_endpoint(component: 'Component', member: str) -> str:
+  return f'{type(component).__module__}:{type(component).__name__}.{member}'
+
+
 def register_component(
   component: 'Component',
   app: FlaskTarget,
-  prefix: Optional[str] = None,
+  prefix: str = '',
 ) -> None:
   """
   Registers all endpoints associated with a component.
   """
-
-  fqn = f'{type(component).__module__}.{type(component).__name__}'
 
   component.before_register(app, prefix)
 
@@ -47,7 +49,7 @@ def register_component(
       rule = prefix + rule
     if 'endpoint' not in options:
       options = dict(options)
-      options['endpoint'] = f'{fqn}.{member_name}'
+      options['endpoint'] = _get_component_endpoint(component, member_name)
     app.add_url_rule(rule, view_func=functools.partial(value, component),**options)
 
   if component.before_request != Component.before_request:
@@ -66,7 +68,11 @@ def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
   """
 
   if not isinstance(endpoint, str):
-    endpoint = cast(str, endpoint.__route__[1]['endpoint'])  # type: ignore
+    assert isinstance(endpoint, types.MethodType)
+    component = endpoint.__self__
+    assert isinstance(component, Component)
+    endpoint = endpoint.__route__[1].get('endpoint') or _get_component_endpoint(component, endpoint.__name__)  # type: ignore
+
   return flask.url_for(endpoint, **kwargs)
 
 
