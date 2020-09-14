@@ -8,7 +8,9 @@ from .app import create_app
 from .config import Config
 from .model import init_db
 from .model.file import LocalStorageManager, init_storage
+from .task_worker import TaskWorker
 
+logger = logging.getLogger(__name__)
 config: Config = nr.proxy.proxy[Config](lambda: click.get_current_context().obj['config'])  # type: ignore
 
 
@@ -25,9 +27,27 @@ def cli(ctx: click.Context, config_file: str, create_tables: bool):
 
 @cli.command()
 def start():
-  app = create_app(config)
-  app.run(port=8000, use_reloader=False)
+  task_worker = TaskWorker('main_task_worker')
+  task_worker.start()
+  try:
+    app = create_app(config)
+    app.run(port=8000, use_reloader=False)
+  finally:
+    logger.info('Stopping main task worker')
+    task_worker.stop()
+    task_worker.join()
 
+
+@cli.command()
+def tasks():
+  from .model import session, session_context
+  from .model.task import Task
+  with session_context():
+    #queue_task('some task', MyTask('Nik'))
+    for task in Task.pending():
+      print(task)
+      #task.load().execute(logging)
+      #task.status
 
 if __name__ == '__main__':
   cli()  # pylint: disable-all
