@@ -45,7 +45,10 @@ class User(Entity):
     if not content_type.startswith('image/'):
       raise ValueError(f'expected image content type, got {content_type!r}')
 
+
     self.avatar_url = None
+    if self.avatar_file:
+      session.delete(self.avatar_file)
     with File.create(mimetype=content_type) as (fp, file_):
       fp.write(raw_data)
       self.avatar_file = file_

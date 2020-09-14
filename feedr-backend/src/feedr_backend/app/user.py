@@ -46,10 +46,12 @@ class UserComponent(Component):
   def get_avatar(self, user_id: int):
     user = User.get(id=user_id).instance
     if user.avatar_file:
-      with user.avatar_file.open() as fp:
+      try:
         filename = 'avatar'  # TODO: Suffix?
         return send_file(
           user.avatar_file.open(),
           mimetype=user.avatar_file.mimetype,
           attachment_filename=filename)
+      except FileNotFoundError:
+        pass
     abort(404)
