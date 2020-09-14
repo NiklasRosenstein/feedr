@@ -43,5 +43,4 @@ class AuthComponent(Component):
 
   def after_register(self, app, prefix):
     for auth_id, auth_handler in self.auth_handlers.items():
-      print('--->', auth_id, auth_handler)
       register_component(auth_handler, app, prefix + '/' + auth_id)

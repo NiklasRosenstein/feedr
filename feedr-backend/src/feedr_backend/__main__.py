@@ -31,7 +31,7 @@ def start():
   task_worker.start()
   try:
     app = create_app(config)
-    app.run(port=8000, use_reloader=False)
+    app.run(port=8000, debug=config.debug)
   finally:
     logger.info('Stopping main task worker')
     task_worker.stop()

@@ -20,6 +20,7 @@ class Auth:
 
 @datamodel
 class Config:
+  debug: bool = False
   auth: Auth
   database: DatabaseConfig
   secret_key: str
