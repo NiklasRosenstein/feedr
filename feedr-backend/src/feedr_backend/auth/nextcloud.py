@@ -6,6 +6,8 @@ from databind.core import datamodel
 
 from feedr_oauth2 import OAuth2Client, OAuth2Session
 from ._base import AuthConfig, AuthPlugin
+from ..model import session
+from ..model.task import BaseTask, queue_task
 from ..model.user import User
 
 
@@ -43,13 +45,26 @@ class NextcloudAuthPlugin(AuthPlugin):
     user = (User
       .get(collector_id=self._collector_id, collector_key=user_id)
       .or_create(user_name=user_id))
+    session.commit()  # TODO: Is this a good idea? Maybe wrap user in it's own context.
 
-    # Fetch the user's avatar.
-    # TODO: Download avatar async.
     auth_header = f'{access_data["token_type"]} {access_data["access_token"]}'
     avatar_url = f'{self._base_url}/avatar/{user_id}/145'
-    avatar_response = requests.get(avatar_url, headers={'Authorization': auth_header})
-    if avatar_response.status_code // 100 == 2:
-      user.save_avatar(avatar_response.content, avatar_response.headers['Content-Type'])
+    queue_task(
+      f'Refresh Avatar for User {user.id}',
+      RefreshAvatar(user.id, auth_header, avatar_url))
 
     return user
+
+
+@datamodel
+class RefreshAvatar(BaseTask):
+  user_id: int
+  auth_header: str
+  avatar_url: str
+
+  def execute(self):
+    user = User.get(id=self.user_id).instance
+    # TODO: Download only if user avatar is already the same.
+    response = requests.get(self.avatar_url, headers={'Authorization': self.auth_header})
+    if response.status_code // 100 == 2:
+      user.save_avatar(response.content, response.headers['Content-Type'])
