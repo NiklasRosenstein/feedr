@@ -1,3 +1,3 @@
 
 from ._base import *
-from . import github, nextcloud
+from . import facebook, github, nextcloud

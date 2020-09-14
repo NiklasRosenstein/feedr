@@ -15,7 +15,7 @@ the topics you are interested in and exchange articles and views with other user
   * User authentication
     * [x] Social login via Nextcloud
     * [x] Social login via GitHub
-    * [ ] Social login via Facebook
+    * [x] Social login via Facebook
     * [ ] Social login via Google
   * RSS
     * [ ] Manage RSS subscriptions
