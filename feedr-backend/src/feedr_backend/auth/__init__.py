@@ -1,2 +1,3 @@
 
-from ._base import AuthConfig, AuthPlugin
+from ._base import *
+from . import github, nextcloud

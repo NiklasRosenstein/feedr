@@ -1,13 +1,11 @@
 
 from pathlib import Path
-from typing import List, Union
+from typing import Dict, Union
 
 from databind.core import datamodel, uniontype
 from databind.yaml import from_str
 
-from .auth import AuthConfig, AuthPlugin
-from .auth.github import GithubAuthConfig
-from .auth.nextcloud import NextcloudAuthConfig
+from .auth import AuthHandlerConfig
 
 
 @datamodel
@@ -15,21 +13,9 @@ class DatabaseConfig:
   url: str
 
 
-@uniontype
-class Authenticator(AuthConfig):
-  github: GithubAuthConfig
-  nextcloud: NextcloudAuthConfig
-
-
-@datamodel
-class Collector:
-  collector_id: str
-  collector: Authenticator
-
-
 @datamodel
 class Auth:
-  collectors: List[Collector]
+  handlers: Dict[str, AuthHandlerConfig]
 
 
 @datamodel

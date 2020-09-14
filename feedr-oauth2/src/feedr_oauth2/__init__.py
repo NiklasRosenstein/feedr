@@ -35,49 +35,55 @@ class OAuth2Client:
     response_type: str = 'code',
     grant_type: str = 'authorization_code',
   ) -> 'OAuth2Session':
-    return OAuth2Session(self, state or self.state_factory(), login, response_type, grant_type)
+    data = OAuth2SessionData(state or self.state_factory(), login, response_type, grant_type)
+    return OAuth2Session(data, self)
 
 
 @datamodel
-class OAuth2Session:
-  client: OAuth2Client
+class OAuth2SessionData:
   state: str
   login: Optional[str]
   response_type: str
   grant_type: str
 
+
+@datamodel
+class OAuth2Session:
+  data: OAuth2SessionData
+  client: OAuth2Client
+
   @property
   def login_url(self) -> str:
     params = {
       'client_id': self.client.client_id,
-      'state': self.state,
-      'response_type': self.response_type,
+      'state': self.data.state,
+      'response_type': self.data.response_type,
     }
-    if self.login:
-      params['login'] = self.login
+    if self.data.login:
+      params['login'] = self.data.login
     if self.client.redirect_uri:
-      params['redirect_uri'] = self.client.redirect_uri,
+      params['redirect_uri'] = self.client.redirect_uri
     return self.client.authorize_url + '?' + urlencode(params)
 
   def validate(self, state: Optional[str]) -> None:
-    assert self.state is not None
-    if self.state != state:
-      raise TamperedFlowException(f'OAuth2 state mismatch ({self.state!r} != {state!r})')
+    assert self.data.state is not None
+    if self.data.state != state:
+      raise TamperedFlowException(f'OAuth2 state mismatch ({self.data.state!r} != {state!r})')
 
   def token_url(self, code: str) -> str:
     params = {
       'client_id': self.client.client_id,
       'client_secret': self.client.client_secret,
       'code': code,
-      'state': self.state,
-      'grant_type': self.grant_type,
+      'state': self.data.state,
+      'grant_type': self.data.grant_type,
     }
     if self.client.redirect_uri:
       params['redirect_uri'] = self.client.redirect_uri
     return self.client.exchange_url + '?' + urlencode(params)
 
   def get_token(self, code: str) -> Dict[str, str]:
-    assert self.grant_type == 'authorization_code'
+    assert self.data.grant_type == 'authorization_code'
     response = requests.post(self.token_url(code))
     response.raise_for_status()
     content_type = response.headers.get('Content-Type', '').partition(';')[0]
@@ -87,4 +93,3 @@ class OAuth2Session:
       return dict(parse_qsl(response.text))
     else:
       raise RuntimeError(f'unknown Content-Type: {content_type!r}')
-

@@ -3,7 +3,7 @@ import datetime
 import uuid
 from typing import Optional
 
-from sqlalchemy import Column, Binary, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, Binary, DateTime, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import relationship
 
 from ._base import Entity, instance_getter
@@ -45,7 +45,6 @@ class User(Entity):
     if not content_type.startswith('image/'):
       raise ValueError(f'expected image content type, got {content_type!r}')
 
-
     self.avatar_url = None
     if self.avatar_file:
       session.delete(self.avatar_file)
@@ -85,3 +84,17 @@ class Token(Entity):
 
   def revoke(self) -> None:
     self.revoked_at = datetime.datetime.utcnow()
+
+
+class LoginState(Entity):
+  __tablename__ = __name__ + '.LoginState'
+
+  id = Column(String, primary_key=True)
+  expires_at = Column(DateTime, nullable=False)
+  data = Column(JSON, nullable=False)
+
+  get = instance_getter['LoginState']()
+
+  @property
+  def is_expired(self) -> bool:
+    return datetime.datetime.utcnow() >= self.expires_at

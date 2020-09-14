@@ -2,15 +2,16 @@
 from typing import Dict, Optional
 
 import requests
-from databind.core import datamodel
+from databind.core import datamodel, implementation
 
 from feedr_oauth2 import OAuth2Client, OAuth2Session
-from ._base import AuthConfig, AuthPlugin
+from ._base import AuthContext, AuthHandlerConfig, OAuth2Handler
 from ..model.user import User
 
 
 @datamodel
-class GithubAuthConfig(AuthConfig):
+@implementation('github')
+class GithubAuthHandlerConfig(AuthHandlerConfig):
   authorize_url: str = 'https://github.com/login/oauth/authorize'
   exchange_url: str = 'https://github.com/login/oauth/access_token'
   user_api_url: str = 'https://api.github.com/user'
@@ -18,33 +19,32 @@ class GithubAuthConfig(AuthConfig):
   client_secret: str
   redirect_uri: Optional[str] = None
 
-  def create_authenticator(self, collector_id: str) -> 'GithubAuthPlugin':
-    oauth2_client = OAuth2Client(
+  def get_auth_handler(self, context: AuthContext) -> 'GithubOAuth2Handler':
+    oauth2 = OAuth2Client(
       self.authorize_url,
       self.exchange_url,
       self.client_id,
       self.client_secret,
       self.redirect_uri,
     )
-    return GithubAuthPlugin(collector_id, oauth2_client, self.user_api_url)
+    return GithubOAuth2Handler(context, oauth2, self)
 
 
-class GithubAuthPlugin(AuthPlugin):
+class GithubOAuth2Handler(OAuth2Handler):
 
-  def __init__(self, collector_id: str, oauth2_client: OAuth2Client, user_api_url: str) -> None:
-    self._collector_id = collector_id
-    self._oauth2_client = oauth2_client
-    self._user_api_url = user_api_url
-
-  def create_login_session(self) -> OAuth2Session:
-    return self._oauth2_client.login_session()
+  def __init__(self, context: AuthContext, oauth2: OAuth2Client, config: GithubAuthHandlerConfig) -> None:
+    super().__init__(context, oauth2)
+    self.config = config
 
   def finalize_login(self, access_data: Dict[str, str]) -> User:
+    auth_header = f'{access_data["token_type"]} {access_data["access_token"]}'
     user_info = requests.get(
-      self._user_api_url,
-      headers={'Authorization': 'token ' + access_data['access_token']}).json()
+      self.config.user_api_url,
+      headers={'Authorization': auth_header}).json()
+
     user = (User
-      .get(collector_id=self._collector_id, collector_key=str(user_info['id']))
+      .get(collector_id=self.context.id, collector_key=str(user_info['id']))
       .or_create(user_name=user_info['login']))
     user.avatar_url = user_info['avatar_url']
+
     return user

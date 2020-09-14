@@ -58,7 +58,10 @@ class LocalStorageManager(StorageManager):
     return self._file_id_to_path(file_id).open('rb')
 
   def delete(self, file_id: str):
-    self._file_id_to_path(file_id).unlink()
+    try:
+      self._file_id_to_path(file_id).unlink()
+    except OSError as exc:
+      logger.warning('Unable to delete file "%s" from disk: %s', file_id, exc)
 
 
 class File(Entity):

@@ -34,6 +34,8 @@ def register_component(
 
   fqn = f'{type(component).__module__}.{type(component).__name__}'
 
+  component.before_register(app, prefix)
+
   for member_name in dir(type(component)):
     value = getattr(type(component), member_name)
     if not isinstance(value, types.FunctionType):
@@ -44,6 +46,7 @@ def register_component(
     if prefix:
       rule = prefix + rule
     if 'endpoint' not in options:
+      options = dict(options)
       options['endpoint'] = f'{fqn}.{member_name}'
     app.add_url_rule(rule, view_func=functools.partial(value, component),**options)
 
@@ -53,6 +56,8 @@ def register_component(
     app.after_request(component.after_request)
   if component.teardown_request != Component.teardown_request:
     app.teardown_request(component.teardown_request)
+
+  component.after_register(app, prefix)
 
 
 def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
@@ -66,6 +71,12 @@ def url_for(endpoint: Union[str, Callable], **kwargs) -> str:
 
 
 class Component:
+
+  def before_register(self, app: FlaskTarget, prefix: str) -> None:
+    pass
+
+  def after_register(self, app: FlaskTarget, prefix: str) -> None:
+    pass
 
   def before_request(self) -> Optional[flask.Request]:
     return None

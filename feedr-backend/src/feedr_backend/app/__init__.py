@@ -11,10 +11,6 @@ from ..model import session, begin_session, end_session
 
 
 def init_app(app: flask.Flask, config: Config) -> None:
-  authenticators = {
-    c.collector_id: c.collector.create_authenticator(c.collector_id)
-    for c in config.auth.collectors
-  }
 
   @app.before_request
   def _before():
@@ -35,8 +31,11 @@ def init_app(app: flask.Flask, config: Config) -> None:
     no_redirect_patterns=['/api/*'],
     token_ttl='P1D',
   )
+
+  auth = AuthComponent(config.auth.handlers, session_manager, '/')
+
   register_component(session_manager, app)
-  register_component(AuthComponent(authenticators, '/', session_manager), app, '/api/auth')
+  register_component(auth, app, '/api/auth')
   register_component(UserComponent(session_manager), app, '/api/user')
 
 
