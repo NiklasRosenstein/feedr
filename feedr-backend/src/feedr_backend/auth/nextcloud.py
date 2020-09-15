@@ -42,6 +42,7 @@ class NextcloudOAuth2Handler(OAuth2Handler):
     user = (User
       .get(collector_id=self.context.id, collector_key=user_id)
       .or_create(user_name=user_id))
+    session.commit()
 
     auth_header = f'{access_data["token_type"]} {access_data["access_token"]}'
     avatar_url = f'{self.base_url}/avatar/{user_id}/145'
@@ -60,7 +61,4 @@ class RefreshAvatar(BaseTask):
 
   def execute(self):
     user = User.get(id=self.user_id).instance
-    # TODO: Download only if user avatar is already the same.
-    response = requests.get(self.avatar_url, headers={'Authorization': self.auth_header})
-    if response.status_code // 100 == 2:
-      user.save_avatar(response.content, response.headers['Content-Type'])
+    user.refresh_avatar(self.avatar_url, headers={'Authorization': self.auth_header})

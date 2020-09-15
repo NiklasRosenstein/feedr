@@ -9,6 +9,7 @@ from ._base import AuthContext, AuthHandlerConfig, OAuth2Handler
 from ..model import session
 from ..model.task import BaseTask, queue_task
 from ..model.user import User
+from ..model.task import queue_task
 
 FACEBOOK_BASE_URL = 'https://www.facebook.com'
 FACEBOOK_GRAPH_URL = 'https://graph.facebook.com'
@@ -42,4 +43,20 @@ class FacebookOAuth2Handler(OAuth2Handler):
     user = (User
       .get(collector_id=self.context.id, collector_key=data['id'])
       .or_create(user_name=data['name']))
+
+    queue_task(
+      f'Download Facebook Profile Picture for user {data["id"]}',
+      RefreshAvatar(user.id, data['id']))
+
     return user
+
+
+@datamodel
+class RefreshAvatar(BaseTask):
+  user_id: int
+  facebook_user_id: str
+
+  def execute(self):
+    user = User.get(id=self.user_id).instance
+    url = f'{FACEBOOK_GRAPH_URL}/v8.0/{self.facebook_user_id}/picture'
+    user.refresh_avatar(url, params={'height': 150})

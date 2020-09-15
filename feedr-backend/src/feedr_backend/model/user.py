@@ -3,6 +3,7 @@ import datetime
 import uuid
 from typing import Optional
 
+import requests
 from sqlalchemy import Column, Binary, DateTime, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import relationship
 
@@ -51,6 +52,16 @@ class User(Entity):
     with File.create(mimetype=content_type) as (fp, file_):
       fp.write(raw_data)
       self.avatar_file = file_
+
+  def refresh_avatar(self, url: str, **kwargs):
+    # TODO: Run HEAD request and check if avatar actually needs to be updated.
+    method = kwargs.pop('method', 'GET')
+    response = requests.request(method, url, **kwargs)
+    response.raise_for_status()
+    content_type = response.headers.get('Content-Type')
+    if not content_type or not content_type.startswith('image/'):
+      raise ValueError(f'no or unexpected Content-Type: {content_type!r}')
+    self.save_avatar(response.content, content_type)
 
   def create_token(self, expiration_date: datetime.datetime) -> 'Token':
     token = Token(user=self, value=str(uuid.uuid4()), expiration_date=expiration_date)
