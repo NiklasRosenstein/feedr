@@ -12,7 +12,7 @@ from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm.query import Query
 
 from ._base import Entity
-from ._session import session, session_context
+from ._session import Session, session, session_context
 from .file import File
 
 logger = logging.getLogger(__name__)
@@ -82,20 +82,20 @@ class Task(Entity):
     logger.info('Executing task %s', self)
     try:
       # TODO: Execute in separate process to capture full stdout/stderr.
-      with session_context():
-        impl = self.load()
-        impl.execute()
+      #with session_context():
+      impl = self.load()
+      impl.execute()
     except BaseException as exc:
       logger.exception('Error executing task %s', self)
       status = TaskStatus.FAILED
     else:
-      logger.info('Completed execution of task %s', self)
       status = TaskStatus.COMPLETED
 
     self.ended_at = datetime.datetime.utcnow()
     self.status = status
     #self.log_file = ...
     session.commit()
+    logger.info('Completed execution of task %s', self)
 
 
 @event.listens_for(Task, 'after_insert')
@@ -113,4 +113,6 @@ def queue_task(name: str, task_impl: BaseTask, stackdepth: int = 1) -> Task:
     del frame
   task = Task.create(name, origin, task_impl)
   session.add(task)
+  session.commit()
+  logger.info('Queued task %s', task)
   return task

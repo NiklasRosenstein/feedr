@@ -1,5 +1,6 @@
 
 import logging
+from typing import cast
 
 import click
 import nr.proxy
@@ -8,10 +9,12 @@ from .app import create_app
 from .config import Config
 from .model import init_db
 from .model.file import LocalStorageManager, init_storage
-from .task_worker import TaskWorker
+from .model.rss import load_feed, UpdateRssFeedsTask
+from .model.task import queue_task
+from .task_worker import BackgroundDispatcher, TaskWorker
 
 logger = logging.getLogger(__name__)
-config: Config = nr.proxy.proxy[Config](lambda: click.get_current_context().obj['config'])  # type: ignore
+config: Config = nr.proxy.proxy[Config]()  # type: ignore
 
 
 @click.group()
@@ -20,7 +23,7 @@ config: Config = nr.proxy.proxy[Config](lambda: click.get_current_context().obj[
 @click.pass_context
 def cli(ctx: click.Context, config_file: str, create_tables: bool):
   logging.basicConfig(level=logging.INFO)
-  ctx.ensure_object(dict)['config'] = Config.load(config_file)
+  nr.proxy.set_value(cast(nr.proxy.proxy, config), Config.load(config_file))
   init_db(config.database.url, create_tables=create_tables)
   init_storage(LocalStorageManager(config.media_directory))
 
@@ -28,26 +31,36 @@ def cli(ctx: click.Context, config_file: str, create_tables: bool):
 @cli.command()
 def start():
   task_worker = TaskWorker('main_task_worker')
-  task_worker.start()
+  dispatcher = BackgroundDispatcher()
+
   try:
+    task_worker.start()
+    dispatcher.start()
+
+    dispatcher.push_recurring(
+      config.rss.update_interval.total_seconds(),
+      lambda: queue_task('Update RSS Feeds', UpdateRssFeedsTask(config.rss.update_interval)))
+
     app = create_app(config)
     app.run(port=8000, debug=config.debug)
   finally:
     logger.info('Stopping main task worker')
     task_worker.stop()
+    dispatcher.stop()
     task_worker.join()
+    dispatcher.join()
+
 
 
 @cli.command()
-def tasks():
-  from .model import session, session_context
-  from .model.task import Task
-  with session_context():
-    #queue_task('some task', MyTask('Nik'))
-    for task in Task.pending():
-      print(task)
-      #task.load().execute(logging)
-      #task.status
+@click.argument('url')
+def ingest(url):
+  from .model import session
+  from .model.rss import Feed, Atom, Article
+
+  load_feed(url)
+  session.commit()
+
 
 if __name__ == '__main__':
   cli()  # pylint: disable-all

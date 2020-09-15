@@ -11,7 +11,7 @@ from sqlalchemy.sql import and_
 
 Entity = declarative_base()
 T = TypeVar('T')
-T_Entity = TypeVar('T_Entity', bound=Entity)
+T_Entity = TypeVar('T_Entity', bound=Entity)  # type: ignore
 
 
 class _RetrievalHelper(Generic[T_Entity]):
