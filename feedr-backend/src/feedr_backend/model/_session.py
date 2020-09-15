@@ -2,32 +2,19 @@
 import contextlib
 from typing import Iterator
 
-import nr.proxy
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session as _Session
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 from ._base import Entity
 
 
 Session = sessionmaker()
-session = nr.proxy.threadlocal[Session](
-  name=__name__ + '.session',
-  error_message='({name}) No SqlAlchemy session is available. Ensure that you are using the '
-                'make_session() context manager before accessing the global session proxy.',
-)
-
-
-def begin_session() -> None:
-  nr.proxy.push(session, Session())
-
-
-def end_session() -> None:
-  nr.proxy.pop(session)
+session: _Session = scoped_session(Session)
 
 
 @contextlib.contextmanager
 def session_context() -> Iterator[None]:
-  begin_session()
   try:
     yield
   except:  # noqa
@@ -36,7 +23,7 @@ def session_context() -> Iterator[None]:
   else:
     session.commit()
   finally:
-    end_session()
+    session.remove()
 
 
 def init_db(db_url: str, echo: bool = False, create_tables: bool = False) -> None:

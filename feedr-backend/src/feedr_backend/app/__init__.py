@@ -7,14 +7,10 @@ from .auth import AuthComponent
 from .session import SessionManager
 from .user import UserComponent
 from ..config import Config
-from ..model import session, begin_session, end_session
+from ..model import session
 
 
 def init_app(app: flask.Flask, config: Config) -> None:
-
-  @app.before_request
-  def _before():
-    begin_session()
 
   @app.teardown_request
   def _teardown(error):
@@ -22,7 +18,7 @@ def init_app(app: flask.Flask, config: Config) -> None:
       session.rollback()
     else:
       session.commit()
-    end_session()
+    session.remove()
 
   app.secret_key = config.secret_key
 
