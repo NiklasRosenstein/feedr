@@ -139,11 +139,16 @@ class JsonView(View):
       else:
         description = ErrorDescription(str(exc.description), {})
       payload = {
-        'errorName': description,
+        'errorName': exc.name,
         'message': description.message,
         'parameters': description.parameters,
       }
-      return json_response(payload, t.cast(int, exc.code), [])
+      status_code = t.cast(int, exc.code)
     else:
-      # TODO
-      raise NotImplementedError
+      payload = {
+        'errorName': 'Internal Server Error',
+        'message': 'An unexpected internal error occurred.',
+        'parameters': {},
+      }
+      status_code = 500
+    return json_response(payload, status_code, [])

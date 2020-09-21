@@ -97,6 +97,9 @@ class View(metaclass=InlineMetaclass):
   def process_route_return(self, route: Route, return_: t.Any) -> t.Any:
     return return_
 
+  def handle_route_exception(self, route: Route, exc: BaseException) -> t.Optional[Response]:
+    return None
+
   def before_request(self) -> t.Optional[Response]:
     return None
 
@@ -126,6 +129,10 @@ class EndpointWrapper:
       response = flask.make_response(result)
       for view in self.view.upiter():
         response = self.view.after_request(response)
+    except BaseException as exc:
+      response = self.view.handle_route_exception(self.route, exc)
+      if response is None:
+        raise
     finally:
       for view in self.view.upiter():
         view.teardown_request(sys.exc_info()[1])
