@@ -32,7 +32,7 @@ class Body(Param):
 
 
 @register_attachment_type()
-class Parameters:
+class JsonParameters:
   """
   Decorator for declaring the source for additional route parameters that are not provided
   view the parameters defined in #Route.path.
@@ -41,7 +41,7 @@ class Parameters:
 
   ```python
   @Route('/users')
-  @Parameters(query=Parameters.BODY)
+  @JsonParameters(query=JsonParameters.BODY)
   def get_users(self, query: UsersQuery) -> Users:
     ...
   ```
@@ -58,7 +58,7 @@ class Parameters:
     for key in self.params:
       if key not in method.__annotations__:
         raise TypeError(f'{key!r} is not an annotated parameter of {method!r}')
-    attach(method, Parameters, self)
+    attach(method, JsonParameters, self)
     return method
 
 
@@ -80,7 +80,7 @@ class JsonView(View):
   """
   This view subclass serializes respones from endpoints into JSON using the #databind.json
   module. Additional parameters, beyond the path parameters declared in the #@Route() decorator,
-  be declared using the #@Parameters() decorator, which can then be de-serialized from the
+  be declared using the #@JsonParameters() decorator, which can then be de-serialized from the
   query string, headers or body.
   """
 
@@ -94,7 +94,7 @@ class JsonView(View):
   def process_route_kwargs(self, route: Route, kwargs: t.Dict[str, t.Any]) -> None:
     # TODO: Create a proper JSON response for missing parameters or parmaeters
     #       could not be de-serialized.
-    parameters = t.cast(t.Optional[Parameters], retrieve(route.func, Parameters))
+    parameters = t.cast(t.Optional[JsonParameters], retrieve(route.func, JsonParameters))
     if not parameters:
       return
     for name, source in parameters.params.items():
@@ -112,7 +112,7 @@ class JsonView(View):
           annotated_type, t.cast(databind.json.JsonType, value), registry=self.json_registry
         )
       else:
-        raise RuntimeError(f'Unexpected @Parameters() declaration: {name}={source!r}')
+        raise RuntimeError(f'Unexpected @JsonParameters() declaration: {name}={source!r}')
 
   def process_route_return(self, route: Route, return_: t.Any) -> t.Any:
     return_type = route.func.__annotations__['return']
