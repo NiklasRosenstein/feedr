@@ -2,23 +2,28 @@
 import enum
 import json
 import typing as t
+from dataclasses import dataclass
 
+import databind.core
 import databind.json
 import flask
-from feedr_core import addon
+import werkzeug.exceptions
+from feedr_core.attach import attach, register_attachment_type, retrieve
 from feedr_core.web.route import Route
-from feedr_core.web.view import View
+from feedr_core.web.view import View, Response
 
 
 class Param:
   pass
 
 
-class Query(Param, t.NamedTuple):
+@dataclass
+class Query(Param):
   name: t.Optional[str] = None
 
 
-class Header(Param, t.NamedTuple):
+@dataclass
+class Header(Param):
   name: t.Optional[str] = None
 
 
@@ -26,7 +31,7 @@ class Body(Param):
   pass
 
 
-@addon.registration_decorator(multiple=False)
+@register_attachment_type()
 class Parameters:
   """
   Decorator for declaring the source for additional route parameters that are not provided
@@ -53,8 +58,22 @@ class Parameters:
     for key in self.params:
       if key not in method.__annotations__:
         raise TypeError(f'{key!r} is not an annotated parameter of {method!r}')
-    addon.apply(method, Parameters, self)
+    attach(method, Parameters, self)
     return method
+
+
+@dataclass
+class ErrorDescription:
+  message: str
+  parameters: t.Dict[str, t.Any]
+
+
+def json_response(body: databind.json.JsonType, code: int, headers: t.Any) -> Response:
+  # TODO: Serialize as a stream to avoid filling up memory for large responses?
+  if isinstance(headers, t.Sequence):
+    headers = dict(headers)
+  headers['Content-Type'] = 'application/json'
+  return flask.make_response(json.dumps(body), code, headers)
 
 
 class JsonView(View):
@@ -65,27 +84,66 @@ class JsonView(View):
   query string, headers or body.
   """
 
+  def __init__(self, json_registry: t.Optional[databind.core.Registry] = None) -> None:
+    super().__init__()
+    self.json_registry = json_registry
+
+  def abort(self, code: int, message: str, parameters: t.Dict[str, t.Any]) -> None:
+    flask.abort(code, ErrorDescription(message, parameters))
+
   def process_route_kwargs(self, route: Route, kwargs: t.Dict[str, t.Any]) -> None:
     # TODO: Create a proper JSON response for missing parameters or parmaeters
     #       could not be de-serialized.
-    parameters = t.cast(t.Optional[Parameters], addon.get_first(route.func, Parameters))
+    parameters = t.cast(t.Optional[Parameters], retrieve(route.func, Parameters))
     if not parameters:
       return
     for name, source in parameters.params.items():
       annotated_type = route.func.__annotations__[name]
       if isinstance(source, Body):
-        kwargs[name] = databind.json.from_json(annotated_type, flask.request.json)
+        kwargs[name] = databind.json.from_json(
+          annotated_type, flask.request.json, registry=self.json_registry
+        )
       elif isinstance(source, (Query, Header)):
         origin = flask.request.args if isinstance(source, Query) else flask.request.headers
-        value = origin.get(source.name or name)
+        value = t.cast(t.Mapping, origin).get(source.name or name)
         if value is not None and annotated_type is not str:
           value = json.loads(value)
-        kwargs[name] = databind.json.from_json(annotated_type, value)
+        kwargs[name] = databind.json.from_json(
+          annotated_type, t.cast(databind.json.JsonType, value), registry=self.json_registry
+        )
       else:
         raise RuntimeError(f'Unexpected @Parameters() declaration: {name}={source!r}')
 
   def process_route_return(self, route: Route, return_: t.Any) -> t.Any:
     return_type = route.func.__annotations__['return']
-    return databind.json.to_json(return_, return_type)
+    code = route.success_code
+    headers = []
 
-  # TODO: Translate exceptions in the route func to JSON responses.
+    if isinstance(return_, tuple):
+      return_, code = return_[:2]
+      if len(return_) > 2:
+        headers = return_[2]
+
+    payload = databind.json.to_json(return_, return_type, registry=self.json_registry)
+    return json_response(payload, code, headers)
+
+  def handle_route_exception(self, route: Route, exc: BaseException) -> t.Optional[Response]:
+    # TODO: In debug mode, include stacktrace.
+    if isinstance(exc, werkzeug.exceptions.HTTPException):
+      if isinstance(exc.description, str):
+        description = ErrorDescription(exc.description, {})
+      elif isinstance(exc.description, t.Mapping):
+        description = ErrorDescription(type(exc).description, exc.description)
+      elif isinstance(exc.description, ErrorDescription):
+        description = exc.description
+      else:
+        description = ErrorDescription(str(exc.description), {})
+      payload = {
+        'errorName': description,
+        'message': description.message,
+        'parameters': description.parameters,
+      }
+      return json_response(payload, t.cast(int, exc.code), [])
+    else:
+      # TODO
+      raise NotImplementedError

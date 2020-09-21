@@ -1,10 +1,10 @@
 
 import typing as t
 
-from feedr_core import addon
+from feedr_core.attach import register_attachment_type, attach
 
 
-@addon.registration_decorator(multiple=False)
+@register_attachment_type()
 class Route:
   """
   A route describes endpoint metadata, e.g. it's path and the HTTP method(s) that it is
@@ -18,10 +18,16 @@ class Route:
   function name).
   """
 
-  def __init__(self, path: str, methods: t.Optional[t.List[str]] = None) -> None:
-    self.func: t.Optional[t.Callable] = None
+  def __init__(
+    self,
+    path: str,
+    methods: t.Optional[t.List[str]] = None,
+    success_code: int = 200,
+  ) -> None:
     self.path = path
     self.methods = methods
+    self.success_code = success_code
+    self.func: t.Optional[t.Callable] = None
     self.endpoint_name: t.Optional[str] = None
 
   def __call__(self, method: t.Callable) -> t.Callable:
@@ -31,6 +37,6 @@ class Route:
     be decorated with multiple routes.
     """
 
-    addon.apply(method, Route, self)
+    attach(method, Route, self)
     self.func = method
     return method

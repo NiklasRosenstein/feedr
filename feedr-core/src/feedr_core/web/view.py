@@ -7,7 +7,7 @@ import flask
 from nr.metaclass.inline import InlineMetaclass
 from werkzeug.wrappers.response import Response
 
-from feedr_core import addon
+from feedr_core.attach import retrieve
 from feedr_core.web.route import Route
 
 
@@ -30,7 +30,7 @@ class View(metaclass=InlineMetaclass):
     for key, value in vars(self).items():
       if not isinstance(value, types.FunctionType):
         continue
-      route = t.cast(t.Optional[Route], addon.get_first(value, Route))
+      route = retrieve(value, Route)
       if not route:
         continue
       self.__routes__[key] = route
