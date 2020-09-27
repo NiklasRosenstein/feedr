@@ -7,6 +7,8 @@ This is a Python library that implements the client side of following OAuth 2.0 
 * Device Code
 * Refresh Token
 
+The implementation follows the OAuth2 standard described in https://oauth.net/2/.
+
 ## Quickstart
 
 ### Authorization Code
