@@ -1,23 +1,29 @@
 
-import requests
+import abc
+import enum
+import hashlib
+import secrets
+import string
+import typing as t
 import uuid
-from databind.core import datamodel, field
-from typing import Callable, Dict, Optional
 from urllib.parse import parse_qsl, urlencode
+
+import requests
+from databind.core import datamodel, field
 
 __author__ = 'Niklas Rosenstein <rosensteinniklas@gmail.com>'
 __version__ = '0.0.0'
 
 
+
+if t.TYPE_CHECKING:
+  class OAuth2StateFactory(t.Protocol):
+    def __call__(self) -> str:
+      pass
+
+
 class OAuth2Exception(Exception):
   pass
-
-
-class TamperedFlowException(OAuth2Exception):
-  """
-  This exception is raised if the OAuth2 flow was tampered with (e.g. if the `code` or `state`
-  of the redirect does not match what was originally sent).
-  """
 
 
 @datamodel
@@ -26,12 +32,12 @@ class OAuth2Client:
   exchange_url: str
   client_id: str
   client_secret: str
-  redirect_uri: Optional[str] = None
-  state_factory: Callable[[], str] = field(default=lambda: str(uuid.uuid4()))
+  redirect_uri: t.Optional[str] = None
+  state_factory: 'OAuth2StateFactory' = field(default=lambda: str(uuid.uuid4()))
 
   def login_session(self,
-    state: Optional[str] = None,
-    login: Optional[str] = None,
+    state: t.Optional[str] = None,
+    login: t.Optional[str] = None,
     response_type: str = 'code',
     grant_type: str = 'authorization_code',
   ) -> 'OAuth2Session':
@@ -42,9 +48,18 @@ class OAuth2Client:
 @datamodel
 class OAuth2SessionData:
   state: str
-  login: Optional[str]
+  login: t.Optional[str]
   response_type: str
   grant_type: str
+
+  @classmethod
+  def from_json(cls, data: t.Dict[str, t.Any]) -> 'OAuth2SessionData':
+    from databind.json import from_json
+    return from_json(cls, data)
+
+  def to_json(self) -> t.Dict[str, t.Any]:
+    from databind.json import to_json
+    return t.cast(t.Dict[str, t.Any], to_json(self))
 
 
 @datamodel
@@ -65,11 +80,6 @@ class OAuth2Session:
       params['redirect_uri'] = self.client.redirect_uri
     return self.client.authorize_url + '?' + urlencode(params)
 
-  def validate(self, state: Optional[str]) -> None:
-    assert self.data.state is not None
-    if self.data.state != state:
-      raise TamperedFlowException(f'OAuth2 state mismatch ({self.data.state!r} != {state!r})')
-
   def token_url(self, code: str) -> str:
     params = {
       'client_id': self.client.client_id,
@@ -82,7 +92,7 @@ class OAuth2Session:
       params['redirect_uri'] = self.client.redirect_uri
     return self.client.exchange_url + '?' + urlencode(params)
 
-  def get_token(self, code: str) -> Dict[str, str]:
+  def get_token(self, code: str) -> t.Dict[str, str]:
     assert self.data.grant_type == 'authorization_code'
     response = requests.post(self.token_url(code))
     response.raise_for_status()

@@ -1,8 +1,10 @@
-name: feedr-oauth2
+name: feedr.oauth2
 version: 0.0.0
+license: MIT
 author: Niklas Rosenstein <rosensteinniklas@gmail.com>
-description: Package description here.
+description: Simple OAuth2 client.
 requirements:
 - python ^3.5
 - requests ^2.24.0
+- databind.core ^0.6.0
 typed: true

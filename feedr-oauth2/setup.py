@@ -17,18 +17,19 @@ else:
 
 requirements = [
   'requests >=2.24.0,<3.0.0',
+  'databind.core >=0.6.0,<1.0.0',
 ]
 
 setuptools.setup(
-  name = 'feedr-oauth2',
+  name = 'feedr.oauth2',
   version = '0.0.0',
   author = 'Niklas Rosenstein',
   author_email = 'rosensteinniklas@gmail.com',
-  description = 'Package description here.',
+  description = 'Simple OAuth2 client.',
   long_description = long_description,
   long_description_content_type = 'text/markdown',
   url = None,
-  license = None,
+  license = 'MIT',
   packages = setuptools.find_packages('src', ['test', 'test.*', 'tests', 'tests.*', 'docs', 'docs.*']),
   package_dir = {'': 'src'},
   include_package_data = True,
