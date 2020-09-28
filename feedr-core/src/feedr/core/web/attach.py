@@ -25,6 +25,7 @@ assert attachment.value == 42
 > does not already exist.
 """
 
+import types
 import typing as t
 
 _metadata: t.Dict[t.Type, 'Metadata'] = {}
@@ -113,23 +114,26 @@ def attach(obj: t.Any, type_: t.Type[T], value: T, multiple: bool = True) -> Non
   container.append(value)
 
 
-def retrieve(obj: t.Any, type_: t.Type[T]) -> t.Optional[T]:
+def retrieve(obj: t.Any, type_: t.Type[T], include_bases: bool = True) -> t.Optional[T]:
   """
   Retrieve a single value of the attachment type *type_* from the object *obj*.
   """
 
-  registry = _get_registry(obj)
-  if not registry:
-    return None
-  return (registry.get(type_) or [None])[0]
+  return next(retrieve_all(obj, type_, include_bases), None)
 
 
-def retrieve_all(obj: t.Any, type_: t.Type[T]) -> t.List[T]:
+def retrieve_all(obj: t.Any, type_: t.Type[T], include_bases: bool = True) -> t.Iterable[T]:
   """
   Retrieve a list of all values registered to *obj* for the attachment type *type_*.
   """
 
+  if isinstance(obj, types.MethodType):
+    obj = obj.__func__
+
   registry = _get_registry(obj)
-  if not registry:
-    return []
-  return registry.get(type_, [])
+  if registry:
+    yield from registry.get(type_, [])
+
+  if include_bases and isinstance(obj, type):
+    for base in obj.__bases__:
+      yield from retrieve_all(base, type_, True)

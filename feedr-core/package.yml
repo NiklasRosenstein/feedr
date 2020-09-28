@@ -1,6 +1,6 @@
-name: feedr-core
+name: feedr.core
 version: 0.0.0
 author: Niklas Rosenstein <rosensteinniklas@gmail.com>
-description: Package description here.
+description: Re-usable core components of the Feedr RSS reader.
 requirements:
-- python ^3.5
+- python ^3.6
