@@ -11,7 +11,7 @@ import typing as t
 import requests
 from urllib.parse import urlencode
 from databind.core import datamodel
-from .commons import AccessTokenResponse, get_token
+from .common import AccessTokenResponse, get_token
 
 
 def get_client_credentials_parameters(
