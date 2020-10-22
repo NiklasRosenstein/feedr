@@ -1,0 +1,10 @@
+release_date: null
+changes:
+- type: fix
+  component: general
+  description: add missing namespace file
+  fixes: []
+- type: fix
+  component: general
+  description: add missing namespace file
+  fixes: []
