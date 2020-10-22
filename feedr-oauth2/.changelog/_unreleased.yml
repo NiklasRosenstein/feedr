@@ -1,0 +1,6 @@
+release_date: null
+changes:
+- type: fix
+  component: general
+  description: add simple test file to import all components, add databind.json dependency
+  fixes: []
