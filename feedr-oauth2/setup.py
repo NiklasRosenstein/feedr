@@ -22,7 +22,7 @@ requirements = [
 
 setuptools.setup(
   name = 'feedr.oauth2',
-  version = '0.1.1',
+  version = '0.1.2',
   author = 'Niklas Rosenstein',
   author_email = 'rosensteinniklas@gmail.com',
   description = 'Simple OAuth2 client.',
